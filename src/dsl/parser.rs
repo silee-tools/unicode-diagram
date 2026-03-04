@@ -323,11 +323,28 @@ fn parse_text(tokens: &[String], line: usize) -> Result<DslCommand, UnidError> {
 
     let col = parse_usize(&tokens[1], "col", line)?;
     let row = parse_usize(&tokens[2], "row", line)?;
-    let content = extract_content(tokens, 3, line)?;
 
-    Ok(DslCommand::Object(DrawObject::Text(Text::new(
-        col, row, content,
-    ))))
+    // Parse options before content
+    let greedy_idx = greedy_token_index(tokens, 3);
+    let mut id: Option<String> = None;
+
+    for token in &tokens[3..greedy_idx] {
+        if let Some(v) = strip_option(token, "id") {
+            validate_id(v, line)?;
+            id = Some(v.to_string());
+        } else {
+            return Err(UnidError::Parse {
+                line,
+                message: format!("unknown text option '{}'", token),
+            });
+        }
+    }
+
+    let content = extract_content(tokens, greedy_idx, line)?;
+    let mut text = Text::new(col, row, content);
+    text.id = id;
+
+    Ok(DslCommand::Object(DrawObject::Text(text)))
 }
 
 fn parse_hline(tokens: &[String], line: usize) -> Result<DslCommand, UnidError> {

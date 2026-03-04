@@ -646,6 +646,47 @@ fn hline_with_id() {
     assert!(stdout.contains("─"));
 }
 
+// ─── Arrow from non-rect objects ────────────────────────────────────
+
+#[test]
+fn arrow_from_hline() {
+    let (stdout, _, ok) = run_stdin(
+        "canvas 30 5\n\
+         collision off\n\
+         hline 0 2 10 id=sep\n\
+         rect 18 0 6 1 id=b c=B\n\
+         arrow sep.r b.l",
+    );
+    assert!(ok);
+    assert!(stdout.contains('→') || stdout.contains('─'));
+}
+
+#[test]
+fn arrow_from_text() {
+    let (stdout, _, ok) = run_stdin(
+        "canvas 30 5\n\
+         collision off\n\
+         text 0 1 id=lbl c=Label\n\
+         rect 18 0 6 1 id=b c=B\n\
+         arrow lbl.r b.l",
+    );
+    assert!(ok);
+    assert!(stdout.contains('→') || stdout.contains('─'));
+}
+
+#[test]
+fn arrow_from_vline() {
+    let (stdout, _, ok) = run_stdin(
+        "canvas 20 10\n\
+         collision off\n\
+         vline 0 0 5 id=axis\n\
+         rect 10 6 6 1 id=b c=B\n\
+         arrow axis.b b.t",
+    );
+    assert!(ok);
+    assert!(stdout.contains('↓') || stdout.contains('│'));
+}
+
 // ─── Rect ID ────────────────────────────────────────────────────────
 
 #[test]

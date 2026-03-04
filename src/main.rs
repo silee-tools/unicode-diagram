@@ -10,7 +10,7 @@ use unicode_diagram::dsl::parse;
 use unicode_diagram::error::UnidError;
 use unicode_diagram::object::arrow::{compute_route, ResolvedArrow};
 use unicode_diagram::object::rect::{BorderStyle, ContentAlign, ContentOverflow, Side};
-use unicode_diagram::object::{DrawObject, Rect};
+use unicode_diagram::object::{DrawObject, HLine, Rect, Text, VLine};
 use unicode_diagram::renderer::Renderer;
 
 fn main() {
@@ -149,40 +149,82 @@ fn process_commands(
     })
 }
 
+/// Anchor source: any object type that can be an arrow endpoint.
+#[derive(Clone)]
+enum AnchorSource {
+    Rect(Rect),
+    Text(Text),
+    HLine(HLine),
+    VLine(VLine),
+}
+
+impl AnchorSource {
+    fn src_anchor(&self, side: Side) -> (usize, usize) {
+        match self {
+            AnchorSource::Rect(r) => r.src_anchor(side),
+            AnchorSource::Text(t) => t.src_anchor(side),
+            AnchorSource::HLine(h) => h.src_anchor(side),
+            AnchorSource::VLine(v) => v.src_anchor(side),
+        }
+    }
+
+    fn dst_anchor(&self, side: Side) -> (usize, usize) {
+        match self {
+            AnchorSource::Rect(r) => r.dst_anchor(side),
+            AnchorSource::Text(t) => t.dst_anchor(side),
+            AnchorSource::HLine(h) => h.dst_anchor(side),
+            AnchorSource::VLine(v) => v.dst_anchor(side),
+        }
+    }
+}
+
 /// Resolves unresolved arrows and fills their reserved slots.
 fn resolve_arrows_into_slots(
     slots: &mut [DrawSlot],
     arrow_slots: &[(usize, String, Side, String, Side, usize)],
 ) -> Result<(), UnidError> {
-    // Phase 1: Build ID → Rect data mapping (clone to avoid borrow conflicts)
-    let mut id_anchors: HashMap<String, Rect> = HashMap::new();
+    // Phase 1: Build ID → AnchorSource mapping from all object types
+    let mut id_anchors: HashMap<String, AnchorSource> = HashMap::new();
     for slot in slots.iter() {
-        if let DrawSlot::Ready(DrawObject::Rect(r)) = slot
-            && let Some(id) = &r.id
-        {
+        let (id_opt, source) = match slot {
+            DrawSlot::Ready(DrawObject::Rect(r)) => {
+                (r.id.as_ref(), AnchorSource::Rect(r.clone()))
+            }
+            DrawSlot::Ready(DrawObject::Text(t)) => {
+                (t.id.as_ref(), AnchorSource::Text(t.clone()))
+            }
+            DrawSlot::Ready(DrawObject::HLine(h)) => {
+                (h.id.as_ref(), AnchorSource::HLine(h.clone()))
+            }
+            DrawSlot::Ready(DrawObject::VLine(v)) => {
+                (v.id.as_ref(), AnchorSource::VLine(v.clone()))
+            }
+            _ => continue,
+        };
+        if let Some(id) = id_opt {
             if id_anchors.contains_key(id) {
                 return Err(UnidError::Parse {
                     line: 0,
                     message: format!("duplicate object id '{}'", id),
                 });
             }
-            id_anchors.insert(id.clone(), r.clone());
+            id_anchors.insert(id.clone(), source);
         }
     }
 
     // Phase 2: Resolve each arrow and replace PendingArrow slots
     for (idx, src_id, src_side, dst_id, dst_side, line) in arrow_slots {
-        let src_rect = id_anchors.get(src_id).ok_or_else(|| UnidError::Parse {
+        let src = id_anchors.get(src_id).ok_or_else(|| UnidError::Parse {
             line: *line,
             message: format!("unknown object id '{}' in arrow source", src_id),
         })?;
-        let dst_rect = id_anchors.get(dst_id).ok_or_else(|| UnidError::Parse {
+        let dst = id_anchors.get(dst_id).ok_or_else(|| UnidError::Parse {
             line: *line,
             message: format!("unknown object id '{}' in arrow destination", dst_id),
         })?;
 
-        let (sx, sy) = src_rect.src_anchor(*src_side);
-        let (ex, ey) = dst_rect.dst_anchor(*dst_side);
+        let (sx, sy) = src.src_anchor(*src_side);
+        let (ex, ey) = dst.dst_anchor(*dst_side);
         let waypoints = compute_route(sx, sy, *src_side, ex, ey, *dst_side);
 
         slots[*idx] = DrawSlot::Ready(DrawObject::Arrow(ResolvedArrow { waypoints }));
