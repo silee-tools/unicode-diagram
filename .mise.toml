@@ -20,3 +20,26 @@ run = "cargo fmt"
 [tasks.fmt-check]
 description = "Check code formatting"
 run = "cargo fmt -- --check"
+
+[tasks.link]
+description = "Build and symlink unid to ~/.local/bin"
+depends = ["build"]
+run = """
+mkdir -p ~/.local/bin
+ln -sf "$(pwd)/target/debug/unid" ~/.local/bin/unid
+echo "Linked: ~/.local/bin/unid"
+"""
+
+[tasks.unlink]
+description = "Remove unid symlink from ~/.local/bin"
+run = """
+if [ -L ~/.local/bin/unid ]; then
+  rm ~/.local/bin/unid
+  echo "Unlinked: ~/.local/bin/unid"
+elif [ -e ~/.local/bin/unid ]; then
+  echo "Error: ~/.local/bin/unid exists but is not a symlink" >&2
+  exit 1
+else
+  echo "Nothing to unlink: ~/.local/bin/unid not found"
+fi
+"""
