@@ -476,18 +476,21 @@ DSL SYNTAX:
     collision on|off
 
   OBJECTS:
-    rect <col> <row> <w> <h> [id=<name>] [s=<style>] [overflow=<mode>] [align=<align>] [c=<content>]
-    text <col> <row> c=<content>
-    hline <col> <row> <length> [s=<style>]
-    vline <col> <row> <length> [s=<style>]
-    arrow <src_id>.<side> <dst_id>.<side>
+    rect <col> <row> <w> <h> [id=<name>] [s=<style>] [overflow=<mode>] [align=<align>]
+         [lg-pos=<top|bottom>] [lg=<legend>] [c=<content>]
+    text <col> <row> [id=<name>] c=<content>
+    hline <col> <row> <length> [id=<name>] [s=<style>] [pos=<pos>] [lg=<legend>]
+    vline <col> <row> <length> [id=<name>] [s=<style>] [pos=<pos>] [lg=<legend>]
+    arrow <src_id>.<side> <dst_id>.<side> [head=<char>] [both] [pos=<pos>] [lg=<legend>]
+    arrowhead <char>
 
   SHORTHAND:
-    s=  → style=       c=  → content=
+    s=  → style=       c=  → content=       lg= → legend=
     Style values: l=light h=heavy d=double r=rounded
     Overflow values: ellipsis|overflow|hidden|error
     Align values: l=left c=center r=right
     Side values: t=top r=right b=bottom l=left
+    Position values: t=top r=right b=bottom l=left a=auto
 
 BORDER STYLES:
   light/l (default):  ┌─┐ │ └─┘
@@ -501,6 +504,12 @@ LINE STYLES:
   double/d:           ═ ║
   dash:               ╌ ╎
 
+CONTENT & LEGEND:
+  c= (content=)       Text inside the object (rect inner area, text object)
+  lg= (legend=)       Text outside/near the object (rect, hline, vline, arrow)
+  Use \n for multiline text in both c= and lg= values
+  Leading/trailing whitespace per line is trimmed automatically
+
 CONTENT OVERFLOW MODES:
   ellipsis (default): Truncate with "prefix..{{N}}" where N=truncated display width
   overflow:           Content overwrites borders
@@ -512,11 +521,26 @@ CONTENT ALIGNMENT:
   center/c:           Center-aligned (both sides truncated/overflow)
   right/r:            Right-aligned (left side truncated/overflows)
 
+LEGEND POSITION:
+  Rect:     lg-pos=top(t)|bottom(b)    (default: top)
+  HLine:    pos=top(t)|bottom(b)|...   (default: top)
+  VLine:    pos=left(l)|right(r)|...   (default: right)
+  Arrow:    pos=top(t)|bottom(b)|...   (default: auto — horizontal=top, vertical=right)
+
 ARROWS:
   Arrows connect objects by id and side (anchor point).
+  Any object with id= can be an arrow endpoint (rect, text, hline, vline).
   Routing is automatic based on source/destination sides.
 
-  Syntax: arrow <src_id>.<side> <dst_id>.<side>
+  Syntax: arrow <src_id>.<side> <dst_id>.<side> [head=<char>] [both] [lg=<text>]
+
+  Options:
+    head=<char>       Custom arrowhead character (overrides global arrowhead)
+    both              Bidirectional arrow (arrowhead on both ends)
+    lg=<text>         Legend text near the arrow
+    arrowhead <char>  Global arrowhead character (separate command)
+
+  Arrowhead priority: per-arrow head= > global arrowhead > default (→←↑↓)
 
   Route types (auto-selected):
     Straight:     ──→        (opposite sides, aligned)
@@ -527,74 +551,51 @@ ARROWS:
     U-shaped:     ──┐        (opposite sides, same axis — ㄷ shape)
                     │
                   ←─┘
+    Self-loop:    ──┐        (same object, different sides)
+                    └──↓
 
   Source anchor: 1 cell outside border (arrow starts here)
   Dest anchor:   on border (arrowhead replaces border character)
+
+RENDERING:
+  2-pass rendering: structure first (borders, lines), then text (c=, lg=, text).
+  Text content always renders on top of structural elements.
 
 EXAMPLE:
   input:
     echo "canvas 52 27 border=r
     collision off
-    # Boxes: 4 styles + alignment + id
-    rect 2 1 16 1 id=api s=d align=c c=API Gateway
-    rect 28 1 12 1 id=web align=c c=Web Client
-    rect 2 9 16 1 id=auth s=r c=Auth 인증
-    rect 28 9 12 1 id=db s=h align=r c=Data Store
-    # Anchor-based arrows (auto-routed)
-    arrow api.r web.l
-    arrow api.b auth.t
-    text 12 5 c=req
-    arrow web.b db.t
-    text 36 5 c=query
-    arrow auth.r db.l
-    text 21 10 c=sync
+    # Boxes with legend and arrow labels
+    rect 2 2 16 1 id=api s=d align=c lg=Server c=API Gateway
+    rect 28 2 12 1 id=web align=c c=Web Client
+    rect 2 10 16 1 id=auth s=r c=Auth 인증
+    rect 28 10 12 1 id=db s=h align=r c=Data Store
+    # Arrows with legend labels and custom head
+    arrow api.r web.l both head=▶ lg=HTTP
+    arrow api.b auth.t lg=verify
+    arrow web.b db.t lg=query
+    arrow auth.r db.l lg=sync
+    # Self-loop on db
+    arrow db.r db.b lg=backup
     # Separator + overflow demos
-    hline 2 17 48 s=dash
-    text 2 19 c=ellipsis:
-    rect 12 19 10 1 c=LongServiceName
-    text 26 19 c=overflow:
-    rect 36 19 10 1 overflow=overflow c=LongServiceName
-    text 2 22 c=hidden:
-    rect 12 22 10 1 overflow=hidden c=LongServiceName" | unid
-
-  output:
-    ╭──────────────────────────────────────────────────╮
-    │ ╔════════════════╗        ┌────────────┐         │
-    │ ║  API Gateway   ║────────→ Web Client │         │
-    │ ╚════════════════╝        └────────────┘         │
-    │          │                       │               │
-    │          │req                    │query          │
-    │          │                       │               │
-    │          │                       │               │
-    │          │                       │               │
-    │ ╭────────↓───────╮        ┏━━━━━━↓━━━━━┓         │
-    │ │Auth 인증       │─sync───→  Data Store┃         │
-    │ ╰────────────────╯        ┗━━━━━━━━━━━━┛         │
-    │                                                  │
-    │                                                  │
-    │                                                  │
-    │                                                  │
-    │                                                  │
-    │ ╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌ │
-    │                                                  │
-    │ ellipsis: ┌──────────┐  overflow: ┌──────────┐   │
-    │           │LongSer..8│            │LongServiceName
-    │           └──────────┘            └──────────┘   │
-    │ hidden:   ┌──────────┐                           │
-    │           │LongServic│                           │
-    │           └──────────┘                           │
-    │                                                  │
-    ╰──────────────────────────────────────────────────╯
+    hline 2 18 48 s=dash lg=Features
+    text 2 20 c=ellipsis:
+    rect 12 20 10 1 c=LongServiceName
+    text 26 20 c=overflow:
+    rect 36 20 10 1 overflow=overflow c=LongServiceName
+    text 2 23 c=hidden:
+    rect 12 23 10 1 overflow=hidden c=LongServiceName" | unid
 
 NOTES:
   - --collision CLI flag overrides DSL collision declaration
   - Canvas auto computes minimum size from all object bounds
   - CJK characters (한글, 漢字, かな) take 2 display columns
-  - content= (c=) must be the last option on a line
-  - Use \n in content for literal newlines
+  - content= (c=) and lg= (legend=) must be the last options on a line
+  - Use \n in content/legend for literal newlines (leading/trailing spaces trimmed)
   - Canvas border is included in the specified size (e.g., 20x5 with border → 18x3 inner)
   - id= names: alphanumeric, underscore, hyphen only
   - Arrow routing is fully automatic based on anchor sides
+  - Self-loop arrows (same src and dst id) use dedicated ㄷ-shape routing
 "#
     );
 }
