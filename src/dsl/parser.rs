@@ -673,14 +673,14 @@ fn parse_line_style(s: &str, line: usize) -> Result<LineStyle, UnidError> {
 
 fn parse_content_overflow(s: &str, line: usize) -> Result<ContentOverflow, UnidError> {
     match s.to_lowercase().as_str() {
-        "ellipsis" => Ok(ContentOverflow::Ellipsis),
-        "overflow" => Ok(ContentOverflow::Overflow),
-        "hidden" => Ok(ContentOverflow::Hidden),
-        "error" => Ok(ContentOverflow::Error),
+        "ellipsis" | "el" => Ok(ContentOverflow::Ellipsis),
+        "overflow" | "o" => Ok(ContentOverflow::Overflow),
+        "hidden" | "h" => Ok(ContentOverflow::Hidden),
+        "error" | "er" => Ok(ContentOverflow::Error),
         _ => Err(UnidError::Parse {
             line,
             message: format!(
-                "unknown overflow mode '{}' (expected ellipsis, overflow, hidden, error)",
+                "unknown overflow mode '{}' (expected ellipsis/el, overflow/o, hidden/h, error/er)",
                 s
             ),
         }),

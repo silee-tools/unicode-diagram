@@ -487,7 +487,7 @@ DSL SYNTAX:
   SHORTHAND:
     s=  → style=       c=  → content=       lg= → legend=
     Style values: l=light h=heavy d=double r=rounded
-    Overflow values: ellipsis|overflow|hidden|error
+    Overflow values: el=ellipsis o=overflow h=hidden er=error
     Align values: l=left c=center r=right
     Side values: t=top r=right b=bottom l=left
     Position values: t=top r=right b=bottom l=left a=auto
