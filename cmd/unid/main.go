@@ -60,7 +60,7 @@ Renders precise Unicode box-drawing diagrams from a simple DSL via stdin.`,
 	rootCmd.Flags().BoolVarP(&showVersion, "version", "v", false, "Show version")
 	rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
 		if showVersion {
-			fmt.Printf("unid v%s © 2025 silee-tools\n", version)
+			fmt.Printf("unid v%s © 2026 silee-tools\n", version)
 			os.Exit(0)
 		}
 	}
