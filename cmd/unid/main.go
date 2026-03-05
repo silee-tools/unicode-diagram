@@ -80,12 +80,10 @@ func readStdin() (string, error) {
 }
 
 type canvasConfig struct {
-	width, height   dsl.CanvasSize
-	border          *object.BorderStyle
-	globalOverflow  object.ContentOverflow
-	globalAlign     object.ContentAlign
-	collision       bool
-	objects         []object.DrawObject
+	globalOverflow object.ContentOverflow
+	globalAlign    object.ContentAlign
+	collision      bool
+	objects        []object.DrawObject
 }
 
 type drawSlot struct {
@@ -107,8 +105,6 @@ type pendingArrowSlot struct {
 }
 
 func processCommands(commands []dsl.DslCommand) (*canvasConfig, error) {
-	var canvasWidth, canvasHeight *dsl.CanvasSize
-	var border *object.BorderStyle
 	var globalOverflow object.ContentOverflow
 	var globalAlign object.ContentAlign
 	var collision *bool
@@ -120,20 +116,13 @@ func processCommands(commands []dsl.DslCommand) (*canvasConfig, error) {
 
 	for _, cmd := range commands {
 		switch c := cmd.(type) {
-		case *dsl.CanvasCmd:
-			w, h := c.Width, c.Height
-			canvasWidth = &w
-			canvasHeight = &h
-			border = c.Border
-			if c.ContentOverflow != nil {
-				globalOverflow = *c.ContentOverflow
-			}
-			if c.ContentAlign != nil {
-				globalAlign = *c.ContentAlign
-			}
 		case *dsl.CollisionCmd:
 			v := c.On
 			collision = &v
+		case *dsl.OverflowCmd:
+			globalOverflow = c.Mode
+		case *dsl.AlignCmd:
+			globalAlign = c.Mode
 		case *dsl.ObjectCmd:
 			slots = append(slots, drawSlot{obj: c.Object})
 		case *dsl.ArrowCmd:
@@ -152,9 +141,6 @@ func processCommands(commands []dsl.DslCommand) (*canvasConfig, error) {
 		}
 	}
 
-	if canvasWidth == nil {
-		return nil, &uerr.NoCanvasError{}
-	}
 	if collision == nil {
 		return nil, &uerr.NoCollisionError{}
 	}
@@ -172,9 +158,6 @@ func processCommands(commands []dsl.DslCommand) (*canvasConfig, error) {
 	}
 
 	return &canvasConfig{
-		width:          *canvasWidth,
-		height:         *canvasHeight,
-		border:         border,
 		globalOverflow: globalOverflow,
 		globalAlign:    globalAlign,
 		collision:      *collision,
@@ -256,42 +239,18 @@ func resolveArrows(slots []drawSlot, arrowSlots []pendingArrowSlot, globalArrowh
 	return nil
 }
 
-func computeCanvasSize(w, h dsl.CanvasSize, objects []object.DrawObject, border *object.BorderStyle) (int, int) {
-	cw, ch := 0, 0
-	switch {
-	case !w.IsAuto && !h.IsAuto:
-		cw, ch = w.Value, h.Value
-	default:
-		maxW, maxH := 1, 1
-		for _, obj := range objects {
-			bw, bh := obj.Bounds()
-			if bw > maxW {
-				maxW = bw
-			}
-			if bh > maxH {
-				maxH = bh
-			}
+func computeCanvasSize(objects []object.DrawObject) (int, int) {
+	maxW, maxH := 1, 1
+	for _, obj := range objects {
+		bw, bh := obj.Bounds()
+		if bw > maxW {
+			maxW = bw
 		}
-		if !w.IsAuto {
-			cw = w.Value
-		} else {
-			cw = maxW
-		}
-		if !h.IsAuto {
-			ch = h.Value
-		} else {
-			ch = maxH
+		if bh > maxH {
+			maxH = bh
 		}
 	}
-	if border != nil {
-		if cw < 3 {
-			cw = 3
-		}
-		if ch < 3 {
-			ch = 3
-		}
-	}
-	return cw, ch
+	return maxW, maxH
 }
 
 func runRender() error {
@@ -307,18 +266,12 @@ func runRender() error {
 	if err != nil {
 		return err
 	}
-	w, h := computeCanvasSize(config.width, config.height, config.objects, config.border)
+	w, h := computeCanvasSize(config.objects)
 
 	cv := canvas.New(w, h)
 	r := renderer.New(cv, config.collision)
 	r.GlobalOverflow = config.globalOverflow
 	r.GlobalAlign = config.globalAlign
-
-	if config.border != nil {
-		if err := r.DrawBorder(*config.border); err != nil {
-			return err
-		}
-	}
 
 	// Apply global defaults to rects
 	objects := make([]object.DrawObject, len(config.objects))
@@ -354,21 +307,13 @@ func runList() error {
 	if err != nil {
 		return err
 	}
-	w, h := computeCanvasSize(config.width, config.height, config.objects, config.border)
+	w, h := computeCanvasSize(config.objects)
 
-	autoLabel := ""
-	if config.width.IsAuto && config.height.IsAuto {
-		autoLabel = " (auto)"
-	}
-
-	fmt.Printf("Canvas: %dx%d%s\n", w, h, autoLabel)
+	fmt.Printf("Canvas: %dx%d (auto)\n", w, h)
 	if config.collision {
 		fmt.Println("Collision: on")
 	} else {
 		fmt.Println("Collision: off")
-	}
-	if config.border != nil {
-		fmt.Printf("Border: %s\n", borderStyleDebug(*config.border))
 	}
 	fmt.Printf("Objects: %d\n", len(config.objects))
 
@@ -402,7 +347,7 @@ func runLint() error {
 	if err != nil {
 		return err
 	}
-	w, h := computeCanvasSize(config.width, config.height, config.objects, config.border)
+	w, h := computeCanvasSize(config.objects)
 
 	fmt.Printf("Canvas: %dx%d\n", w, h)
 	if config.collision {
@@ -430,9 +375,6 @@ func runLint() error {
 	if config.collision {
 		cv := canvas.New(w, h)
 		r := renderer.New(cv, true)
-		if config.border != nil {
-			_ = r.DrawBorder(*config.border)
-		}
 		for _, obj := range config.objects {
 			if err := r.Draw(obj); err != nil {
 				errors = append(errors, err.Error())
@@ -458,18 +400,4 @@ func runLint() error {
 		fmt.Println("OK")
 	}
 	return nil
-}
-
-func borderStyleDebug(s object.BorderStyle) string {
-	switch s {
-	case object.BorderLight:
-		return "Light"
-	case object.BorderHeavy:
-		return "Heavy"
-	case object.BorderDouble:
-		return "Double"
-	case object.BorderRounded:
-		return "Rounded"
-	}
-	return "Light"
 }

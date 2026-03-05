@@ -30,15 +30,6 @@ func TestDrawRectWithContent(t *testing.T) {
 	assert.Contains(t, r.Render(), "Hi")
 }
 
-func TestDrawBorderRounded(t *testing.T) {
-	cv := canvas.New(5, 3)
-	r := New(cv, false)
-	require.NoError(t, r.DrawBorder(object.BorderRounded))
-	out := r.Render()
-	assert.Contains(t, out, "╭───╮")
-	assert.Contains(t, out, "╰───╯")
-}
-
 func TestDrawHLine(t *testing.T) {
 	cv := canvas.New(5, 1)
 	r := New(cv, false)

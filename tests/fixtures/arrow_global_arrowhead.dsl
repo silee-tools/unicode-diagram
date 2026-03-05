@@ -1,4 +1,3 @@
-canvas 30 3
 collision off
 arrowhead ▶
 box 0 0 4 1 id=a c=A

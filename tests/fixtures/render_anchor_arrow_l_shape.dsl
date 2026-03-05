@@ -1,4 +1,3 @@
-canvas 30 10
 collision off
 box 0 0 6 1 id=a c=A
 box 18 6 6 1 id=b c=B

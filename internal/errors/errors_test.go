@@ -6,10 +6,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestNoCanvasError(t *testing.T) {
-	assert.Equal(t, "canvas not defined", (&NoCanvasError{}).Error())
-}
-
 func TestNoCollisionError(t *testing.T) {
 	assert.Equal(t, "collision not defined", (&NoCollisionError{}).Error())
 }

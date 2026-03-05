@@ -2,7 +2,6 @@ package renderer
 
 import (
 	"fmt"
-	"math"
 	"strings"
 
 	"github.com/silee-tools/unid/internal/canvas"
@@ -96,44 +95,6 @@ func (r *Renderer) Render() string {
 	return r.Canvas.Render()
 }
 
-func (r *Renderer) DrawBorder(style object.BorderStyle) error {
-	tl, tr, bl, br, h, v := borderChars(style)
-	w := r.Canvas.W
-	ht := r.Canvas.H
-	idx := math.MaxInt
-
-	if err := r.Canvas.PutChar(0, 0, tl, false, idx); err != nil {
-		return err
-	}
-	for c := 1; c < w-1; c++ {
-		if err := r.Canvas.PutChar(c, 0, h, false, idx); err != nil {
-			return err
-		}
-	}
-	if err := r.Canvas.PutChar(w-1, 0, tr, false, idx); err != nil {
-		return err
-	}
-
-	for row := 1; row < ht-1; row++ {
-		if err := r.Canvas.PutChar(0, row, v, false, idx); err != nil {
-			return err
-		}
-		if err := r.Canvas.PutChar(w-1, row, v, false, idx); err != nil {
-			return err
-		}
-	}
-
-	if err := r.Canvas.PutChar(0, ht-1, bl, false, idx); err != nil {
-		return err
-	}
-	for c := 1; c < w-1; c++ {
-		if err := r.Canvas.PutChar(c, ht-1, h, false, idx); err != nil {
-			return err
-		}
-	}
-	return r.Canvas.PutChar(w-1, ht-1, br, false, idx)
-}
-
 func (r *Renderer) enrichError(err error, _ object.DrawObject, idx int) error {
 	ce, ok := err.(*uerr.CollisionError)
 	if !ok {
@@ -144,7 +105,7 @@ func (r *Renderer) enrichError(err error, _ object.DrawObject, idx int) error {
 	if idx < len(r.objects) {
 		incomingDesc = r.objects[idx].CollisionDesc()
 	}
-	existingDesc := "border"
+	existingDesc := "unknown"
 	if ce.ExistingIdx < len(r.objects) {
 		existingDesc = r.objects[ce.ExistingIdx].CollisionDesc()
 	}

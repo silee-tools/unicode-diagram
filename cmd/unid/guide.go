@@ -18,15 +18,13 @@ DSL SYNTAX:
   Lines starting with # are comments. Blank lines are ignored.
   Commands are case-insensitive. Each command is on its own line.
 
-  HEADER (required, must appear before objects):
-    canvas <w> <h> [border(b)=<style>] [overflow(o)=<mode>] [align(a)=<align>]
-    canvas auto [border(b)=<style>]
-      - auto: computes minimum size from all object bounds
-      - border is included in the specified size (e.g., 20x5 with border → 18x3 inner)
-    collision on|off
-    arrowhead <char>               Global arrowhead family (optional)
+  GLOBAL SETTINGS (must appear before objects):
+    collision on|off                       Required
+    overflow <mode>                        Global overflow mode (optional)
+    align <align>                          Global alignment (optional)
+    arrowhead <char>                       Global arrowhead family (optional)
 
-  OBJECTS (canvas drawing targets):
+  OBJECTS:
     box <col> <row> <w> <h> [id=<name>] [style(s)=<style>] [overflow(o)=<mode>]
         [align(a)=<align>] [legend-pos(lp)=top(t)|bottom(b)]
         [legend-overflow(lo)=<mode>] [legend-align(la)=<align>]
@@ -43,8 +41,9 @@ DSL SYNTAX:
 
     id= names: alphanumeric, underscore, hyphen only
     CJK characters (한글, 漢字, かな) take 2 display columns
+    Canvas size is always auto-computed from object bounds.
 
-BORDER STYLES (style(s)= for box):
+BOX STYLES (style(s)= for box):
   light(l, default):  ┌─┐ │ └─┘
   heavy(h):           ┏━┓ ┃ ┗━┛
   double(d):          ╔═╗ ║ ╚═╝
@@ -62,13 +61,13 @@ CONTENT & LEGEND:
   content(c)= and legend(lg)= must be the last options on a line.
   Use \n for multiline text. Leading/trailing whitespace per line is trimmed.
 
-OVERFLOW MODES (overflow(o)= / legend-overflow(lo)=):
+OVERFLOW MODES (overflow(o)= / legend-overflow(lo)= / global "overflow"):
   ellipsis(el, default): Truncate with "prefix..{N}" where N=truncated display width
   overflow(o):           Content overwrites borders
   hidden(h):             Truncate without indicator
   error(er):             Return error if content exceeds width
 
-ALIGNMENT (align(a)= / legend-align(la)=):
+ALIGNMENT (align(a)= / legend-align(la)= / global "align"):
   left(l, default):   Left-aligned (right side truncated/overflows)
   center(c):          Center-aligned (both sides truncated/overflow)
   right(r):           Right-aligned (left side truncated/overflows)
@@ -117,7 +116,6 @@ RENDERING:
   Text content always renders on top of structural elements.
 
 TIPS:
-  - canvas auto is recommended — auto-computes minimum canvas size.
   - Arrow legend is placed near the midpoint of the longest segment.
     Multiple arrows in the same area may have overlapping legends.
   - For precise label positioning, use text objects instead of arrow legends:
@@ -128,13 +126,13 @@ TIPS:
 
 EXAMPLE:
   input:
-    echo "canvas 52 27 border=r
-    collision off
+    echo "collision off
+    align c
     # Boxes with legend and arrow labels
-    box 2 2 16 1 id=api s=d align=c lg=Server c=API Gateway
-    box 28 2 12 1 id=web align=c c=Web Client
-    box 2 10 16 1 id=auth s=r c=Auth 인증
-    box 28 10 12 1 id=db s=h align=r c=Data Store
+    box 0 1 16 1 id=api s=d lg=Server c=API Gateway
+    box 26 1 12 1 id=web c=Web Client
+    box 0 9 16 1 id=auth s=r c=Auth 인증
+    box 26 9 12 1 id=db s=h align=r c=Data Store
     # Arrows with legend labels and custom head
     arrow api.r web.l both head=▶ lg=HTTP
     arrow api.b auth.t lg=verify
@@ -143,42 +141,40 @@ EXAMPLE:
     # Self-loop on db
     arrow db.r db.b pos=r lg=backup
     # Separator + overflow demos
-    hline 2 18 48 s=dash lg=Features
-    text 2 20 c=ellipsis:
-    box 12 20 10 1 c=LongServiceName
-    text 26 20 c=overflow:
-    box 36 20 10 1 overflow=overflow c=LongServiceName
-    text 2 23 c=hidden:
-    box 12 23 10 1 overflow=hidden c=LongServiceName" | unid
+    hline 0 17 50 s=dash lg=Features
+    text 0 19 c=ellipsis:
+    box 10 19 10 1 c=LongServiceName
+    text 24 19 c=overflow:
+    box 34 19 10 1 overflow=overflow c=LongServiceName
+    text 0 22 c=hidden:
+    box 10 22 10 1 overflow=hidden c=LongServiceName" | unid
 
   output:
-    ╭──────────────────────────────────────────────────╮
-    │ Server                                           │
-    │ ╔════════════════╗ HTTP   ┌────────────┐         │
-    │ ║  API Gateway   ║◀──────▶│ Web Client │         │
-    │ ╚════════════════╝        └────────────┘         │
-    │          │                       │               │
-    │          │                       │               │
-    │          │verify                 │query          │
-    │          │                       │               │
-    │          ▼                       ▼               │
-    │ ╭────────────────╮ sync   ┏━━━━━━━━━━━━┓         │
-    │ │Auth 인증       │───────▶┃  Data Store┃──┐      │
-    │ ╰────────────────╯        ┗━━━━━━━━━━━━┛  │      │
-    │                                  ▲        │      │
-    │                                  │        │      │
-    │                                  └────backup     │
-    │                                                  │
-    │ Features                                         │
-    │ ╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌ │
-    │                                                  │
-    │ ellipsis: ┌──────────┐  overflow: ┌──────────┐   │
-    │           │LongSer..8│            │LongServiceName
-    │           └──────────┘            └──────────┘   │
-    │ hidden:   ┌──────────┐                           │
-    │           │LongServic│                           │
-    │           └──────────┘                           │
-    ╰──────────────────────────────────────────────────╯
+    Server
+    ╔════════════════╗ HTTP   ┌────────────┐
+    ║  API Gateway   ║◀──────▶│ Web Client │
+    ╚════════════════╝        └────────────┘
+             │                       │
+             │                       │
+             │verify                 │query
+             │                       │
+             ▼                       ▼
+    ╭────────────────╮ sync   ┏━━━━━━━━━━━━┓
+    │   Auth 인증    │───────▶┃  Data Store┃──┐
+    ╰────────────────╯        ┗━━━━━━━━━━━━┛  │
+                                     ▲        │
+                                     │        │
+                                     └────backup
+
+    Features
+    ╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌
+
+    ellipsis: ┌──────────┐  overflow: ┌──────────┐
+              │LongSer..8│            │LongServiceName
+              └──────────┘            └──────────┘
+    hidden:   ┌──────────┐
+              │LongServic│
+              └──────────┘
 
 `)
 }

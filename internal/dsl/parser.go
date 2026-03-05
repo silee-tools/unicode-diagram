@@ -36,10 +36,12 @@ func Parse(input string) ([]DslCommand, error) {
 func parseCommand(tokens []string, line int) (DslCommand, error) {
 	keyword := strings.ToLower(tokens[0])
 	switch keyword {
-	case "canvas":
-		return parseCanvas(tokens, line)
 	case "collision":
 		return parseCollision(tokens, line)
+	case "overflow":
+		return parseOverflowCmd(tokens, line)
+	case "align":
+		return parseAlignCmd(tokens, line)
 	case "box", "rect":
 		return parseRect(tokens, line)
 	case "text":
@@ -57,61 +59,6 @@ func parseCommand(tokens []string, line int) (DslCommand, error) {
 	}
 }
 
-func parseCanvas(tokens []string, line int) (DslCommand, error) {
-	if len(tokens) < 2 {
-		return nil, &uerr.ParseError{Line: line, Message: "canvas requires size arguments (e.g., 'canvas 40 10' or 'canvas auto')"}
-	}
-
-	cmd := &CanvasCmd{}
-	var optsStart int
-
-	if strings.ToLower(tokens[1]) == "auto" {
-		cmd.Width = CanvasSize{IsAuto: true}
-		cmd.Height = CanvasSize{IsAuto: true}
-		optsStart = 2
-	} else {
-		if len(tokens) < 3 {
-			return nil, &uerr.ParseError{Line: line, Message: "canvas requires width and height (e.g., 'canvas 40 10')"}
-		}
-		w, err := parseUint(tokens[1], "canvas width", line)
-		if err != nil {
-			return nil, err
-		}
-		h, err := parseUint(tokens[2], "canvas height", line)
-		if err != nil {
-			return nil, err
-		}
-		cmd.Width = CanvasSize{Value: w}
-		cmd.Height = CanvasSize{Value: h}
-		optsStart = 3
-	}
-
-	for _, token := range tokens[optsStart:] {
-		if v, ok := stripOption(token, "border", "b"); ok {
-			bs, err := parseBorderStyle(v, line)
-			if err != nil {
-				return nil, err
-			}
-			cmd.Border = &bs
-		} else if v, ok := stripOption(token, "overflow", "o"); ok {
-			co, err := parseContentOverflow(v, line)
-			if err != nil {
-				return nil, err
-			}
-			cmd.ContentOverflow = &co
-		} else if v, ok := stripOption(token, "align", "a"); ok {
-			ca, err := parseContentAlign(v, line)
-			if err != nil {
-				return nil, err
-			}
-			cmd.ContentAlign = &ca
-		} else {
-			return nil, &uerr.ParseError{Line: line, Message: fmt.Sprintf("unknown canvas option '%s'", token)}
-		}
-	}
-	return cmd, nil
-}
-
 func parseCollision(tokens []string, line int) (DslCommand, error) {
 	if len(tokens) < 2 {
 		return nil, &uerr.ParseError{Line: line, Message: "collision requires 'on' or 'off'"}
@@ -124,6 +71,28 @@ func parseCollision(tokens []string, line int) (DslCommand, error) {
 	default:
 		return nil, &uerr.ParseError{Line: line, Message: fmt.Sprintf("collision must be 'on' or 'off', got '%s'", tokens[1])}
 	}
+}
+
+func parseOverflowCmd(tokens []string, line int) (DslCommand, error) {
+	if len(tokens) < 2 {
+		return nil, &uerr.ParseError{Line: line, Message: "overflow requires a mode (ellipsis/el, overflow/o, hidden/h, error/er)"}
+	}
+	mode, err := parseContentOverflow(tokens[1], line)
+	if err != nil {
+		return nil, err
+	}
+	return &OverflowCmd{Mode: mode}, nil
+}
+
+func parseAlignCmd(tokens []string, line int) (DslCommand, error) {
+	if len(tokens) < 2 {
+		return nil, &uerr.ParseError{Line: line, Message: "align requires a mode (left/l, center/c, right/r)"}
+	}
+	mode, err := parseContentAlign(tokens[1], line)
+	if err != nil {
+		return nil, err
+	}
+	return &AlignCmd{Mode: mode}, nil
 }
 
 func parseRect(tokens []string, line int) (DslCommand, error) {
