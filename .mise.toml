@@ -46,4 +46,5 @@ fi
 
 [tasks.release]
 description = "Interactive release (version bump, tag, push)"
+raw = true
 run = "bash scripts/release.sh"
