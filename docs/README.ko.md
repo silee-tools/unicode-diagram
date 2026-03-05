@@ -34,19 +34,15 @@ unid guide                 # 사용 가이드 출력
 
 ## 예시
 
-**입력:**
-
-```
-canvas auto
+```sh
+echo 'canvas auto
 collision off
 box 0 0 10 3 id=a c=Client
 box 16 0 10 3 id=b c=Server
 box 32 0 8 3 id=c c=DB
 arrow a.r b.l
-arrow b.r c.l
+arrow b.r c.l' | unid
 ```
-
-**출력:**
 
 ```
 ┌──────────┐    ┌──────────┐    ┌────────┐
