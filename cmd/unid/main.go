@@ -19,9 +19,8 @@ var version = "dev"
 
 func main() {
 	rootCmd := &cobra.Command{
-		Use:     "unid",
-		Short:   "Unicode box-drawing diagram renderer",
-		Version: version,
+		Use:   "unid",
+		Short: "Unicode box-drawing diagram renderer",
 		Long: `Unicode box-drawing diagram renderer.
 
 A text-based alternative to ASCII diagram editors like Monodraw or ASCIIFlow.
@@ -56,6 +55,15 @@ Renders precise Unicode box-drawing diagrams from a simple DSL via stdin.`,
 		Short: "Show comprehensive usage guide with examples",
 		Run:   func(cmd *cobra.Command, args []string) { printGuide() },
 	})
+
+	var showVersion bool
+	rootCmd.Flags().BoolVarP(&showVersion, "version", "v", false, "Show version")
+	rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
+		if showVersion {
+			fmt.Printf("unid v%s © 2025 silee-tools\n", version)
+			os.Exit(0)
+		}
+	}
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %s\n", err)
