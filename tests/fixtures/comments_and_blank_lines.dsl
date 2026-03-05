@@ -1,5 +1,4 @@
 # This is a comment
-canvas 6 3
 
 collision off
 # Another comment

@@ -2,10 +2,6 @@ package errors
 
 import "fmt"
 
-type NoCanvasError struct{}
-
-func (e *NoCanvasError) Error() string { return "canvas not defined" }
-
 type NoCollisionError struct{}
 
 func (e *NoCollisionError) Error() string { return "collision not defined" }

@@ -8,30 +8,26 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestParseCanvas(t *testing.T) {
-	cmds, err := Parse("canvas 40 10")
+func TestParseOverflow(t *testing.T) {
+	cmds, err := Parse("overflow ellipsis")
 	require.NoError(t, err)
 	require.Len(t, cmds, 1)
-	cv := cmds[0].(*CanvasCmd)
-	assert.Equal(t, 40, cv.Width.Value)
-	assert.Equal(t, 10, cv.Height.Value)
-	assert.False(t, cv.Width.IsAuto)
+	assert.Equal(t, object.OverflowEllipsis, cmds[0].(*OverflowCmd).Mode)
+
+	cmds, err = Parse("overflow hidden")
+	require.NoError(t, err)
+	assert.Equal(t, object.OverflowHidden, cmds[0].(*OverflowCmd).Mode)
 }
 
-func TestParseCanvasAuto(t *testing.T) {
-	cmds, err := Parse("canvas auto")
+func TestParseAlign(t *testing.T) {
+	cmds, err := Parse("align center")
 	require.NoError(t, err)
-	cv := cmds[0].(*CanvasCmd)
-	assert.True(t, cv.Width.IsAuto)
-	assert.True(t, cv.Height.IsAuto)
-}
+	require.Len(t, cmds, 1)
+	assert.Equal(t, object.AlignCenter, cmds[0].(*AlignCmd).Mode)
 
-func TestParseCanvasWithBorder(t *testing.T) {
-	cmds, err := Parse("canvas 20 10 border=rounded")
+	cmds, err = Parse("align r")
 	require.NoError(t, err)
-	cv := cmds[0].(*CanvasCmd)
-	require.NotNil(t, cv.Border)
-	assert.Equal(t, object.BorderRounded, *cv.Border)
+	assert.Equal(t, object.AlignRight, cmds[0].(*AlignCmd).Mode)
 }
 
 func TestParseCollision(t *testing.T) {
@@ -114,10 +110,10 @@ func TestParseArrowhead(t *testing.T) {
 
 func TestParseCommentsAndBlankLines(t *testing.T) {
 	input := `# comment
-canvas 10 5
-
 collision on
+
 # another comment
+overflow ellipsis
 `
 	cmds, err := Parse(input)
 	require.NoError(t, err)

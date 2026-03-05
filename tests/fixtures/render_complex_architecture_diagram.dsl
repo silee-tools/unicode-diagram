@@ -1,4 +1,3 @@
-canvas 156 62 b=r
 collision off
 box 4 2 31 3 id=bb s=r a=c c=Browser (Scenario B)\nConnect BO User
 box 56 2 36 3 id=ba s=r a=c c=Browser (Scenario A)\nConnect FO User

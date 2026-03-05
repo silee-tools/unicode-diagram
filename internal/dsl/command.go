@@ -6,25 +6,23 @@ type DslCommand interface {
 	isDslCommand()
 }
 
-type CanvasSize struct {
-	IsAuto bool
-	Value  int
-}
-
-type CanvasCmd struct {
-	Width, Height   CanvasSize
-	Border          *object.BorderStyle
-	ContentOverflow *object.ContentOverflow
-	ContentAlign    *object.ContentAlign
-}
-
-func (c *CanvasCmd) isDslCommand() {}
-
 type CollisionCmd struct {
 	On bool
 }
 
 func (c *CollisionCmd) isDslCommand() {}
+
+type OverflowCmd struct {
+	Mode object.ContentOverflow
+}
+
+func (c *OverflowCmd) isDslCommand() {}
+
+type AlignCmd struct {
+	Mode object.ContentAlign
+}
+
+func (c *AlignCmd) isDslCommand() {}
 
 type ObjectCmd struct {
 	Object object.DrawObject

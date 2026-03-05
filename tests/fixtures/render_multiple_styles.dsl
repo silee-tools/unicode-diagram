@@ -1,4 +1,3 @@
-canvas 30 12
 collision off
 box 0 0 6 1 s=l
 box 0 3 6 1 s=h
