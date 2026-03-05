@@ -17,10 +17,10 @@ jobs:
       matrix:
         include:
           - target: aarch64-apple-darwin
-            os: macos-latest
-          - target: x86_64-apple-darwin
-            os: macos-latest
-    runs-on: ${{ matrix.os }}
+            runner: macos-latest
+          - target: x86_64-unknown-linux-gnu
+            runner: [self-hosted, linux, x86_64]
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
 
@@ -45,7 +45,11 @@ jobs:
           tar czf "../${ARCHIVE}" *
           cd ..
 
-          shasum -a 256 "${ARCHIVE}" > "${ARCHIVE}.sha256"
+          if command -v sha256sum &>/dev/null; then
+            sha256sum "${ARCHIVE}" > "${ARCHIVE}.sha256"
+          else
+            shasum -a 256 "${ARCHIVE}" > "${ARCHIVE}.sha256"
+          fi
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -57,7 +61,7 @@ jobs:
 
   release:
     needs: build
-    runs-on: [self-hosted, linux, x64]
+    runs-on: [self-hosted, linux, x86_64]
     steps:
       - uses: actions/checkout@v4
 
@@ -80,7 +84,7 @@ jobs:
 
   update-homebrew:
     needs: release
-    runs-on: [self-hosted, linux, x64]
+    runs-on: [self-hosted, linux, x86_64]
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
@@ -95,11 +99,11 @@ jobs:
           TAG="${GITHUB_REF_NAME}"
           VERSION="${TAG#v}"
 
-          ARM_ARCHIVE="unid-${TAG}-aarch64-apple-darwin.tar.gz"
-          X86_ARCHIVE="unid-${TAG}-x86_64-apple-darwin.tar.gz"
+          MACOS_ARM_ARCHIVE="unid-${TAG}-aarch64-apple-darwin.tar.gz"
+          LINUX_X86_ARCHIVE="unid-${TAG}-x86_64-unknown-linux-gnu.tar.gz"
 
-          ARM_SHA256=$(awk '{print $1}' "artifacts/${ARM_ARCHIVE}.sha256")
-          X86_SHA256=$(awk '{print $1}' "artifacts/${X86_ARCHIVE}.sha256")
+          MACOS_ARM_SHA256=$(awk '{print $1}' "artifacts/${MACOS_ARM_ARCHIVE}.sha256")
+          LINUX_X86_SHA256=$(awk '{print $1}' "artifacts/${LINUX_X86_ARCHIVE}.sha256")
 
           BASE_URL="https://github.com/silee-tools/unicode-diagram/releases/download/${TAG}"
 
@@ -116,13 +120,13 @@ jobs:
             version "${VERSION}"
 
             on_macos do
-              if Hardware::CPU.arm?
-                url "${BASE_URL}/${ARM_ARCHIVE}"
-                sha256 "${ARM_SHA256}"
-              else
-                url "${BASE_URL}/${X86_ARCHIVE}"
-                sha256 "${X86_SHA256}"
-              end
+              url "${BASE_URL}/${MACOS_ARM_ARCHIVE}"
+              sha256 "${MACOS_ARM_SHA256}"
+            end
+
+            on_linux do
+              url "${BASE_URL}/${LINUX_X86_ARCHIVE}"
+              sha256 "${LINUX_X86_SHA256}"
             end
 
             def install
